@@ -1,0 +1,1628 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gerador de Relatório de Inspeção Sanitária — 2ª CRS/SES/RS</title>
+<!-- Leitor SheetJS para importar a planilha Alvarás Alimentos 2ªCRS.xlsx localmente no navegador -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --azul: #164e86;
+  --azul2: #eaf3fb;
+  --verde: #16794b;
+  --vermelho: #b42318;
+  --cinza: #667085;
+  --borda: #d0d5dd;
+  --fundo: #f5f7fa;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: var(--fundo);
+  color: #1d2939;
+}
+.topo {
+  background: linear-gradient(120deg, #123d68, #1769a8);
+  color: #fff;
+  padding: 18px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.topo h1 { margin: 0 0 4px; font-size: 22px; }
+.topo p { margin: 0; opacity: .9; font-size: 13px; }
+.topo-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-topo {
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-topo:hover { background: rgba(255,255,255,0.28); }
+.btn-topo.destaque { background: #fff; color: var(--azul); border-color: #fff; }
+
+.app { max-width: 1280px; margin: 18px auto; padding: 0 14px; }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 18px; align-items: start; }
+
+/* Barra dos 10 Passos Guiados */
+.wizard-nav {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  scrollbar-width: thin;
+}
+.step-pill {
+  border: 1px solid var(--borda);
+  background: #fff;
+  color: #344054;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.step-pill.ativo { background: var(--azul); color: #fff; border-color: var(--azul); }
+.step-pill.concluido { background: #ecfdf3; color: #05603a; border-color: #abefc6; }
+
+.card {
+  background: #fff;
+  border: 1px solid #e4e7ec;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 3px 14px rgba(16,24,40,.06);
+  margin-bottom: 14px;
+}
+.card h2 {
+  font-size: 18px;
+  margin: 0 0 14px;
+  color: var(--azul);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+label { display: block; font-weight: 700; font-size: 13px; margin-bottom: 5px; }
+input, select, textarea {
+  width: 100%;
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  padding: 10px;
+  font: inherit;
+  background: #fff;
+}
+input[readonly] { background: #f9fafb; color: #475467; }
+textarea { min-height: 76px; resize: vertical; }
+.campo { margin-bottom: 12px; }
+.hint { font-size: 12px; color: var(--cinza); margin-top: 4px; }
+.acoes { display: flex; gap: 9px; flex-wrap: wrap; }
+.nav-wizard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #eaecf0;
+}
+.btn {
+  border: 0;
+  border-radius: 9px;
+  padding: 10px 15px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.primario { background: var(--azul); color: #fff; }
+.secundario { background: #eef2f6; color: #344054; }
+.sucesso { background: var(--verde); color: #fff; }
+.perigo { background: #fee4e2; color: var(--vermelho); }
+.aviso {
+  padding: 11px;
+  background: #fffaeb;
+  border: 1px solid #fedf89;
+  border-radius: 8px;
+  color: #7a2e0e;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.ok {
+  padding: 11px;
+  background: #ecfdf3;
+  border: 1px solid #abefc6;
+  border-radius: 8px;
+  color: #05603a;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.box-importacao-rapida {
+  background: #f0f7ff;
+  border: 2px dashed #1769a8;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.card-resumo-estab {
+  background: #f8fbff;
+  border: 1px solid #b9d7f5;
+  border-radius: 10px;
+  padding: 14px;
+  margin: 12px 0;
+}
+.card-resumo-estab h3 { margin: 0 0 8px; font-size: 15px; color: var(--azul); }
+.grid-resumo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; }
+.item-nc {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 8px;
+  align-items: start;
+  margin: 10px 0;
+}
+.nc-num {
+  background: var(--azul2);
+  color: var(--azul);
+  font-weight: 700;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.checks label {
+  font-weight: 400;
+  margin: 8px 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+}
+.checks label:hover { background: #f9fafb; }
+.checks input { width: auto; margin-top: 3px; }
+.subdocs { margin-left: 26px; border-left: 3px solid #e4e7ec; padding-left: 10px; }
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--azul2);
+  color: var(--azul);
+  font-size: 12px;
+  font-weight: 700;
+}
+.hidden { display: none !important; }
+
+.galeria-fotos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.foto-card {
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  padding: 6px;
+  background: #fff;
+  text-align: center;
+}
+.foto-card img { width: 100%; height: 95px; object-fit: cover; border-radius: 4px; }
+.foto-card input { margin-top: 5px; padding: 5px; font-size: 11px; }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+.modal-box {
+  background: #fff;
+  border-radius: 14px;
+  max-width: 820px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 20px;
+}
+.tabela-sistema { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+.tabela-sistema th, .tabela-sistema td { border: 1px solid var(--borda); padding: 8px; text-align: left; }
+.tabela-sistema th { background: #f2f4f7; }
+
+/* Prévia fiel ao Relatório de Inspeção (MODELO NOVO) */
+.preview-wrap { position: sticky; top: 12px; }
+.preview {
+  background: #fff;
+  border: 1px solid #98a2b3;
+  min-height: 650px;
+  padding: 14mm 12mm;
+  font-family: Arial, sans-serif;
+  font-size: 10pt;
+  line-height: 1.15;
+  color: #000;
+  max-height: 82vh;
+  overflow: auto;
+}
+.ri-doc { max-width: 180mm; margin: auto; }
+.preview .ri-cabecalho-tabela { border-collapse: collapse; width: 100%; margin: 0 0 10px; }
+.preview .ri-cabecalho-tabela th, .preview .ri-cabecalho-tabela td { border: 1px solid #000; }
+.preview .ri-cabecalho-tabela th { font-size: 12pt; font-weight: 700; text-align: center; background: #fff; }
+.preview .ri-cabecalho-tabela td { font-size: 9pt; text-align: center; background: #fff; }
+.preview .ri-doc h1 { font-size: 12pt; line-height: 1.1; margin: 0; font-weight: 700; }
+.preview .ri-doc h2 { font-size: 11pt; line-height: 1.1; margin: 2px 0 7px; font-weight: 700; }
+.preview .cab { font-size: 9pt; line-height: 1.15; margin: 0 auto 8px; max-width: 165mm; }
+.preview .data-inspecao { text-align: left; margin: 0; font-size: 10pt; }
+.preview .ri-table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+.preview .ri-table td, .preview .ri-table th {
+  border: 1px solid #000;
+  padding: 5px;
+  vertical-align: top;
+  text-align: left;
+  font-weight: 400;
+}
+.preview .ri-table th { font-weight: 700; text-align: center; background: #c6d9f1; }
+.preview .fotos { min-height: 95px; }
+.preview .fotos-grid-doc { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.preview .foto-item-doc { text-align: center; margin-bottom: 6px; page-break-inside: avoid; }
+.preview .foto-item-doc img { max-width: 100%; max-height: 150px; border: 1px solid #ccc; }
+.preview .ri-doc ol, .preview .ri-doc ul { margin: 5px 0 5px 22px; padding: 0; }
+.preview .ri-doc li { margin-bottom: 3px; }
+
+/* Layout contínuo: os cartões ficam visíveis em uma única página e a prévia
+   permanece ao lado no desktop, como no formulário de referência. */
+.wizard-nav { display: none !important; }
+.step-panel.hidden { display: block !important; }
+.step-panel .nav-wizard { display: none !important; }
+
+@media (max-width: 960px) {
+  .grid { grid-template-columns: 1fr; }
+  .preview-wrap { position: static; }
+  .row, .row3, .grid-resumo { grid-template-columns: 1fr; }
+}
+@media print {
+  @page { size: A4; margin: 20mm; }
+  body { background: #fff; }
+  .topo, .formulario, .wizard-nav, .modal-backdrop { display: none !important; }
+  .app, .grid { display: block; max-width: none; margin: 0; padding: 0; }
+  .preview-wrap { position: static; }
+  .preview-wrap > .card > h2 { display: none !important; }
+  .preview-wrap > .card { border: 0; box-shadow: none; padding: 0; margin: 0; }
+  .preview { border: 0; max-height: none; overflow: visible; padding: 0; }
+  .ri-doc { max-width: none; margin: 0; }
+  .ri-cabecalho-tabela { margin-top: 0; }
+  .ri-table th { background: #c6d9f1 !important; }
+  .ri-cabecalho-tabela th, .ri-cabecalho-tabela td { background: #fff !important; }
+}
+</style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.8/pizzip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.67.0/docxtemplater.js"></script>
+</head>
+<body>
+
+<header class="topo">
+  <div>
+    <h1>Gerador de Relatório de Inspeção Sanitária (RI)</h1>
+    <p>2ª Coordenadoria Regional de Saúde / SES-RS — Base local privada por dispositivo</p>
+  </div>
+  <div class="topo-acoes">
+    <button class="btn-topo destaque" id="btnAbrirBase" type="button">📂 Carregar / Atualizar Planilha (.xlsx)</button>
+    <button class="btn-topo" id="btnAbrirRascunhos" type="button">💾 Rascunhos (<span id="contRascunhos">0</span>)</button>
+    <button class="btn-topo" id="btnAbrirHistorico" type="button">📜 Histórico (<span id="contHistorico">0</span>)</button>
+  </div>
+</header>
+
+<main class="app">
+  <nav class="wizard-nav" id="wizardNav"></nav>
+
+  <div class="grid">
+    <section class="formulario">
+
+      <!-- PASSO 1: ESTABELECIMENTO -->
+      <div class="card step-panel" data-step="1">
+        <h2><span>1. 🔎 Estabelecimento</span> <span class="badge" id="badgeTotalBase">0 cadastros</span></h2>
+
+        <!-- Caixa de importação direta visível quando o navegador ainda não tem a planilha salva -->
+        <div id="boxImportacaoInicial" class="box-importacao-rapida">
+          <label for="inputExcelRapido">📥 Importar Planilha "Alvarás Alimentos 2ªCRS.xlsx" neste aparelho</label>
+          <input type="file" id="inputExcelRapido" accept=".xlsx,.xls">
+          <div class="hint">Os dados ficam salvos localmente apenas neste navegador (celular ou computador) e não ficam expostos no GitHub.</div>
+        </div>
+
+        <div id="statusBase" class="aviso">Nenhuma planilha carregada neste navegador. Selecione o arquivo Excel acima para começar.</div>
+
+        <div class="campo">
+          <label for="busca">Pesquisar por Razão Social, Nome Fantasia, CNPJ ou CPF</label>
+          <input id="busca" list="listaEstab" placeholder="Digite para pesquisar nos estabelecimentos importados...">
+          <datalist id="listaEstab"></datalist>
+          <div class="hint">Selecione um estabelecimento para revisar os dados antes de avançar.</div>
+        </div>
+
+        <div id="painelConfirmacaoEstab" class="card-resumo-estab hidden">
+          <h3>Dados Encontrados na Planilha</h3>
+          <div class="grid-resumo" id="resumoEstabDados"></div>
+          <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <span class="badge" id="badgeSituacaoAlvara"></span>
+            <button type="button" class="btn secundario" id="btnHabilitarEdicaoManual" style="padding:5px 10px; font-size:11px;">✏️ Editar campos manualmente para este RI</button>
+          </div>
+        </div>
+
+        <div id="camposEstabDetalhe" class="hidden" style="margin-top:12px;">
+          <div class="row">
+            <div class="campo"><label>Razão Social *</label><input id="razao" readonly></div>
+            <div class="campo"><label>Nome Fantasia</label><input id="fantasia" readonly></div>
+          </div>
+          <div class="row">
+            <div class="campo"><label>CNPJ ou CPF *</label><input id="cnpj" readonly></div>
+            <div class="campo"><label>Município *</label><input id="municipio" readonly></div>
+          </div>
+          <div class="campo"><label>Licença Sanitária nº</label><input id="licenca" placeholder="Preencher manualmente, se disponível"></div>
+          <div class="campo"><label>Endereço *</label><input id="endereco" readonly></div>
+          <div class="row">
+            <div class="campo"><label>Telefone</label><input id="telefone" readonly></div>
+            <div class="campo"><label>E-mail</label><input id="email" readonly></div>
+          </div>
+          <div class="row">
+            <div class="campo"><label>Responsável Legal</label><input id="responsavel" readonly></div>
+            <div class="campo"><label>CPF do Responsável</label><input id="cpfResp" readonly></div>
+          </div>
+          <div class="row">
+            <div class="campo"><label>Coordenadas</label><input id="coordenadas" readonly></div>
+            <div class="campo"><label>Vencimento do Alvará</label><input id="vencimento" type="date" readonly></div>
+          </div>
+        </div>
+
+        <div class="nav-wizard">
+          <button class="btn secundario" type="button" id="btnPreencherSemPlanilha">Preencher manualmente</button>
+          <button class="btn primario" type="button" data-next="2">Confirmar e Avançar ➔</button>
+        </div>
+      </div>
+
+      <!-- PASSO 2: DATA DA INSPEÇÃO E NUMERAÇÃO -->
+      <div class="card step-panel hidden" data-step="2">
+        <h2><span>2. 📅 Data da Inspeção e Número do RI</span> <span class="badge">Sem Duplicidade</span></h2>
+        <div class="row3">
+          <div class="campo">
+            <label>Número do RI *</label>
+            <input id="numero" placeholder="067">
+          </div>
+          <div class="campo">
+            <label>Ano *</label>
+            <input id="ano" type="number">
+          </div>
+          <div class="campo">
+            <label>Data da inspeção *</label>
+            <input id="data" type="date">
+          </div>
+        </div>
+        <div class="acoes" style="margin-bottom:10px;">
+          <button class="btn secundario" type="button" id="btnReservarNumero">🔒 Sugerir Próximo Número Livre da Planilha</button>
+        </div>
+        <div id="statusNumeracao" class="ok">Verificação contra duplicidade ativa com base na aba Numeração RI e no Histórico local.</div>
+
+        <div class="nav-wizard">
+          <button class="btn secundario" type="button" data-prev="1">⬅ Voltar</button>
+          <button class="btn primario" type="button" data-next="3">Avançar ➔</button>
+        </div>
+      </div>
+
+      <!-- PASSO 3: ATIVIDADES LICENCIADAS -->
+      <div class="card step-panel hidden" data-step="3">
+        <h2><span>3. 🏭 Atividades Licenciadas</span> <span class="badge">CNAEs Cadastrados</span></h2>
+        <p class="hint" style="margin-top:0;">Marque as caixas de seleção com os CNAEs do estabelecimento ou inclua atividades da tabela de Legislação:</p>
+        <div id="listaCheckboxesCnae" class="checks" style="margin-bottom:12px;"></div>
+
+        <div style="border-top:1px solid #eaecf0; padding-top:12px;">
+          <label>Incluir outro CNAE da tabela de Legislação</label>
+          <div class="row">
+            <select id="selectCnaeExtra"><option value="">Selecione um CNAE...</option></select>
+            <button class="btn secundario" type="button" id="btnAddCnaeExtra">+ Incluir CNAE</button>
+          </div>
+        </div>
+
+        <div class="nav-wizard">
+          <button class="btn secundario" type="button" data-prev="2">⬅ Voltar</button>
+          <button class="btn primario" type="button" data-next="4">Avançar ➔</button>
+        </div>
+      </div>
+
+      <!-- PASSO 4: PESSOA CONTACTADA -->
+      <div class="card step-panel hidden" data-step="4">
+        <h2><span>4. 👤 Pessoa Contactada e Equipe Inspetora</span></h2>
+        <div class="campo">
+          <label>Pessoa(s) contactada(s) *</label>
+          <input id="contatada" placeholder="Nome de quem acompanhou a inspeção...">
+        </div>
+        <div class="campo">
+          <label>Equipe Inspetora (Nome e ID Funcional) *</label>
+          <input id="equipeInspetora" value="Max Carvalho – ID 4469682">
+        </div>
+
+        <div class="nav-wizard">
+          <button class="btn secundario" type="button" data-prev="3">⬅ Voltar</button>
+          <button class="btn primario" type="button" data-next="5">Avançar ➔</button>
+        </div>
+      </div>
+
+      <!-- PASSO 5: OBJETIVO -->
+      <div class="card step-panel hidden" data-step="5">
+        <h2><span>5. 🎯 Objetivo da Inspeção</span></h2>
+        <div class="checks" id="grupoObjetivo">
+          <label><input type="radio" name="objetivoRadio" value="Alvará Inicial"> <span><b>Alvará Inicial</b></span></label>
+          <label><input type="radio" name="objetivoRadio" value="Renovação de Alvará"> <span><b>Renovação de Alvará</b></span></label>
+          <label><input type="radio" name="objetivoRadio" value="Rotina"> <span><b>Rotina</b></span></label>
+          <label><input type="radio" name="objetivoRadio" value="Denúncia"> <span><b>Denúncia</b></span></label>
+        </div>
+
+        <div class="nav-wizard">
+          <button class="btn secundario" type="button" data-prev="4">⬅ Voltar</button>
+          <button class="btn primario" type="button" data-next="6">Avançar ➔</button>
+        </div>
+      </div>
+
+      <!-- PASSO 6: NÃO CONFORMIDADES E FOTOS -->
+      <div class="card step-panel hidden" data-step="6">
+        <h2><span>6. ⚠️ Não Conformidades e Fotos</span></h2>
+        <div class="checks">
+          <label><input type="checkbox" id="semNC"> <span><b>Não foram identificadas não conformidades durante a inspeção.</b></span></label>
+        </div>
+        <div id="containerNCs"></div>
+        <button class="btn secundario" id="btnAddNC" type="button">+ Adicionar não conformidade</button>
+
+        <div style="border-top: 1px solid #eaecf0; margin-top: 18px; padding-top: 14px;">
+          <label>📸 Anexar Fotos (Câmera ou Galeria)</label>
+          <input type="file" id="inputFotos" accept="image/*" multiple capture="environment">
+          <div id="galeriaFotos" class="galeria-fotos"></div>
+        </div>
+
+        <div class="nav-wizard">
+          <button class="btn secundario" type="button" data-prev="5">⬅ Voltar</button>
+          <button class="btn primario" type="button" data-next="7">Avançar ➔</button>
+        </div>
+      </div>
+
+      <!-- PASSO 7: CONCLUSÃO -->
+      <div class="card step-panel hidden" data-step="7">
+        <h2><span>7. ✅ Conclusão</span></h2>
+        <div class="checks" id="containerConclusao"></div>
+
+        <div class="nav-wizard">
+          <button class="btn secundario" type="button" data-prev="6">⬅ Voltar</button>
+          <button class="btn primario" type="button" data-next="8">Avançar ➔</button>
+        </div>
+      </div>
+
+      <!-- PASSO 8: DOCUMENTOS SOLICITADOS -->
+      <div class="card step-panel hidden" data-step="8">
+        <h2><span>8. 📎 Documentos Solicitados</span></h2>
+        <div class="checks" id="containerDocs"></div>
+
+        <div class="nav-wizard">
+          <button class="btn secundario" type="button" data-prev="7">⬅ Voltar</button>
+          <button class="btn primario" type="button" data-next="9">Revisar Dados ➔</button>
+        </div>
+      </div>
+
+      <!-- PASSO 9: REVISAR DADOS -->
+      <div class="card step-panel hidden" data-step="9">
+        <h2><span>8. Finalizar</span></h2>
+        <div id="boxValidacaoContrato" class="aviso">Verificando campos...</div>
+        <div id="resumoRevisaoFinal" class="card-resumo-estab"></div>
+
+        <div class="acoes" style="margin-top:12px;">
+          <button class="btn secundario" type="button" id="btnSalvarRascunhoNomeado">💾 Salvar nos Rascunhos</button>
+        </div>
+
+        <div class="nav-wizard">
+          <button class="btn secundario" type="button" data-prev="8">⬅ Voltar</button>
+          <button class="btn primario" type="button" data-next="10">Ir para Emissão (Passo 10) ➔</button>
+        </div>
+      </div>
+
+      <!-- PASSO 10: GERAR RI EM WORD E PDF -->
+      <div class="card step-panel hidden" data-step="10">
+        <h2><span>Emissão do relatório</span></h2>
+        <div class="ok">Ao gerar o relatório, o número do RI é marcado como utilizado neste navegador e salvo no Histórico.</div>
+
+        <div class="acoes" style="margin-top:14px;">
+          <button class="btn sucesso" id="btnBaixarDocx" type="button">⬇️ Baixar RI em DOCX</button>
+          <button class="btn primario" id="btnBaixarPdf" type="button">🖨️ Imprimir / Salvar em PDF</button>
+          <button class="btn perigo" id="btnLimparNovo" type="button">🔄 Iniciar Novo Relatório</button>
+        </div>
+
+        <div class="nav-wizard">
+          <button class="btn secundario" type="button" data-prev="9">⬅ Voltar para Revisão</button>
+          <span></span>
+        </div>
+      </div>
+
+    </section>
+
+    <aside class="preview-wrap">
+      <div class="card">
+        <h2><span>Prévia do Relatório</span> <span class="badge">Arial 10 • Modelo Novo</span></h2>
+        <div id="preview" class="preview"></div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<!-- MODAL: PLANILHA, RASCUNHOS E HISTÓRICO -->
+<div id="modalSistema" class="modal-backdrop hidden">
+  <div class="modal-box">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h2 id="modalTitulo" style="margin:0; color:var(--azul);"></h2>
+      <button class="btn perigo" id="btnFecharModal" type="button">✕ Fechar</button>
+    </div>
+    <div id="modalConteudo"></div>
+  </div>
+</div>
+
+<script>
+// 1. METADADOS INSTITUCIONAIS E REGRAS PÚBLICAS DE LEGISLAÇÃO (Zero dados pessoais no código)
+const METADADOS_RI = {
+  orgaoCabecalho: "2ª Coordenadoria Regional de Saúde/SES/RS – Vigilância Sanitária – Setor Alimentos – (51) 3287-2512 – visa-19crs@saude.rs.gov.br",
+  emailRetorno: "visa-19crs@saude.rs.gov.br",
+  passosWizard: [
+    { num: 1, titulo: "1. 🔎 Estabelecimento" },
+    { num: 2, titulo: "2. 📅 Data e Nº RI" },
+    { num: 3, titulo: "3. 🏭 Atividades" },
+    { num: 4, titulo: "4. 👤 Contactado" },
+    { num: 5, titulo: "5. 🎯 Objetivo" },
+    { num: 6, titulo: "6. ⚠️ Não Conformidades" },
+    { num: 7, titulo: "7. ✅ Conclusão" },
+    { num: 8, titulo: "8. 📎 Documentos" },
+    { num: 9, titulo: "9. 📋 Revisar" },
+    { num: 10, titulo: "10. 📄 Gerar RI" }
+  ],
+  conclusoes: {
+    A: "A empresa encontra-se em condições de funcionamento para o ramo de atividade solicitado segundo a legislação vigente.",
+    B: "A empresa não se encontra em condições de funcionamento para o ramo de atividade solicitado segundo a legislação vigente. A empresa apresenta não-conformidades que colocam em risco a qualidade dos produtos e a saúde dos consumidores. Solicitamos que estas adequações sejam realizadas de imediato, para não configurar transgressão das normas sanitárias vigentes e gerar penalização ao infrator."
+  },
+  documentos: [
+    { cod: "A", sub: false, texto: "Relatório comprovando a resolução das não conformidades, com fotos." },
+    { cod: "B", sub: false, texto: "Exame de saúde dos manipuladores de alimentos: coprocultura e parasitológico." },
+    { cod: "C", sub: false, texto: "Documentos para renovação do alvará sanitário, conforme Portaria CEVS/SES/RS nº 199 de 2012." },
+    { cod: "C1", sub: true, texto: "Requerimento ao Delegado da respectiva Coordenadoria Regional de Saúde, solicitando vistoria prévia para renovação do alvará sanitário, indicando a atividade industrial, assinado pelo responsável legal e contendo dados completos da empresa, CNPJ, Inscrição Estadual, endereço, e-mail e telefone." },
+    { cod: "C2", sub: true, texto: "Cópia do CNPJ ou de documento do responsável legal com CPF." },
+    { cod: "C3", sub: true, texto: "Cópia do Alvará Sanitário anterior." },
+    { cod: "C4", sub: true, texto: "Comprovante de pagamento de taxa pública ou comprovante de isenção. A isenção aplica-se apenas a Microempreendedor Individual, mediante CCMEI; Microprodutor Rural, mediante bloco de produtor; ou Microempresa, mediante tela cadastral ou declaração no PGDAS-D do mês anterior à solicitação." },
+    { cod: "C5", sub: true, texto: "Certificado de limpeza e desinfecção do reservatório de água emitido por empresa licenciada pela Vigilância Sanitária." },
+    { cod: "C6", sub: true, texto: "Laudo bacteriológico comprovando a potabilidade da água conforme a legislação específica." },
+    { cod: "C7", sub: true, texto: "Para agroindústria, Atestado de Cadastramento no Programa de Agroindústria Familiar emitido pela Secretaria de Desenvolvimento Rural, Pesca e Cooperativismo." },
+    { cod: "D", sub: false, texto: 'Certificado recente de curso de boas práticas em manipulação de alimentos do responsável pela produção. Sugestão: <a href="https://www.escolavirtual.gov.br/curso/287">https://www.escolavirtual.gov.br/curso/287</a>.' },
+    { cod: "E", sub: false, texto: "Anexo II da RDC nº 275 de 2002 preenchido e assinado pela responsável da produção, correspondente à Lista de Verificação das Boas Práticas de Fabricação de Alimentos." }
+  ],
+  legislacaoPadrao: [
+    { "CNAE": "1091-1/01", "Atividade": "Fabricação de produtos de panificação industrial", "Legislação específica principal": "RDC Anvisa nº 711/2022", "Legislação transversal a considerar": "RDC nº 275/2002" },
+    { "CNAE": "1092-9/00", "Atividade": "Fabricação de biscoitos e bolachas", "Legislação específica principal": "RDC Anvisa nº 711/2022", "Legislação transversal a considerar": "RDC nº 275/2002" },
+    { "CNAE": "1071-6/00", "Atividade": "Fabricação de açúcar em bruto", "Legislação específica principal": "", "Legislação transversal a considerar": "RDC nº 275/2002" },
+    { "CNAE": "1121-6/00", "Atividade": "Fabricação de águas envasadas", "Legislação específica principal": "RDC Anvisa nº 717/2022", "Legislação transversal a considerar": "RDC nº 173/2006 e RDC nº 275/2002" },
+    { "CNAE": "1064-3/00", "Atividade": "Fabricação de farinha de milho e derivados, exceto óleos de milho", "Legislação específica principal": "RDC Anvisa nº 711/2022", "Legislação transversal a considerar": "RDC nº 275/2002" },
+    { "CNAE": "1053-8/00", "Atividade": "Fabricação de sorvetes e outros gelados comestíveis", "Legislação específica principal": "RDC Anvisa nº 713/2022", "Legislação transversal a considerar": "RDC nº 267/2003" },
+    { "CNAE": "1099-6/04", "Atividade": "Fabricação de gelo comum", "Legislação específica principal": "RDC Anvisa nº 717/2022", "Legislação transversal a considerar": "RDC nº 275/2002" },
+    { "CNAE": "4639-7/02", "Atividade": "Comércio atacadista de produtos alimentícios em geral, com fracionamento/acondicionamento associado", "Legislação específica principal": "RDC nº 716/2022 e IN nº 159/2022", "Legislação transversal a considerar": "RDC nº 275/2002" },
+    { "CNAE": "1096-1/00", "Atividade": "Fabricação de alimentos e pratos prontos", "Legislação específica principal": "", "Legislação transversal a considerar": "RDC nº 275/2002" },
+    { "CNAE": "1099-6/99", "Atividade": "Fabricação de outros produtos alimentícios não especificados anteriormente", "Legislação específica principal": "", "Legislação transversal a considerar": "RDC nº 275/2002" }
+  ]
+};
+
+const $ = id => document.getElementById(id);
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+}
+
+function norm(s) {
+  return String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function onlyDigits(s) {
+  return String(s ?? '').replace(/\D+/g, '');
+}
+
+function normalizarDataISO(valor) {
+  if (!valor) return '';
+  if (valor instanceof Date && !isNaN(valor)) return valor.toISOString().slice(0, 10);
+  const s = String(valor).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) {
+    const ano = m[3].length === 2 ? '20' + m[3] : m[3];
+    return `${ano}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  }
+  return '';
+}
+
+function fmtDate(iso) {
+  const limpo = normalizarDataISO(iso);
+  if (!limpo) return '[DADO NÃO INFORMADO]';
+  const [y, m, d] = limpo.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function extrairResponsavelECpf(textoBruto) {
+  const s = String(textoBruto || '').trim();
+  const match = s.match(/^(.*?)(?:\s*\(?(?:CPF\s*)?)(\d{3}\.?\d{3}\.?\d{3}-?\d{2})\)?\s*$/i);
+  return match ? [match[1].trim(), match[2]] : [s, ''];
+}
+
+// 2. REPOSITÓRIO LOCAL PRIVADO (localStorage)
+const DataRepository = {
+  cadastro: [],
+  legislacao: [],
+  numeracao: [],
+  rascunhos: [],
+  historico: [],
+  metaSincronizacao: null,
+
+  init() {
+    this.cadastro = this.load('ri_db_cadastro', []);
+    this.legislacao = this.load('ri_db_legislacao', METADADOS_RI.legislacaoPadrao);
+    this.numeracao = this.load('ri_db_numeracao', []);
+    this.rascunhos = this.load('ri_db_rascunhos', []);
+    this.historico = this.load('ri_db_historico', []);
+    this.metaSincronizacao = this.load('ri_db_meta_sync', null);
+  },
+
+  storage() {
+    try { return window.localStorage; } catch (e) { return null; }
+  },
+
+  load(key, fallback) {
+    const s = this.storage();
+    if (s && s.getItem(key)) {
+      try { return JSON.parse(s.getItem(key)); } catch (e) {}
+    }
+    return fallback;
+  },
+
+  save(key, data) {
+    const s = this.storage();
+    if (s) {
+      try { s.setItem(key, JSON.stringify(data)); } catch (e) {}
+    }
+  },
+
+  importarArquivoExcel(file, callbackSucesso) {
+    if (!file) return;
+    if (typeof XLSX === 'undefined') {
+      alert('A biblioteca de leitura de Excel ainda está carregando. Verifique sua conexão com a internet e tente novamente.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: 'array', cellDates: true });
+        const lerAba = nomeAba => {
+          const encontrada = wb.SheetNames.find(n => norm(n) === norm(nomeAba));
+          return encontrada ? XLSX.utils.sheet_to_json(wb.Sheets[encontrada], { defval: '' }) : null;
+        };
+        const cad = lerAba('Cadastro');
+        const leg = lerAba('Legislação');
+        const num = lerAba('Numeração RI');
+
+        if (!cad || !cad.length) {
+          alert('Não foi possível localizar dados na aba "Cadastro" da planilha selecionada.');
+          return;
+        }
+        this.cadastro = cad;
+        this.save('ri_db_cadastro', cad);
+
+        if (leg && leg.length) {
+          this.legislacao = leg;
+          this.save('ri_db_legislacao', leg);
+        }
+        if (num && num.length) {
+          this.numeracao = num;
+          this.save('ri_db_numeracao', num);
+        }
+        this.metaSincronizacao = {
+          arquivo: file.name,
+          dataHora: new Date().toLocaleString('pt-BR'),
+          totalCadastros: this.cadastro.length
+        };
+        this.save('ri_db_meta_sync', this.metaSincronizacao);
+        if (callbackSucesso) callbackSucesso();
+      } catch (err) {
+        alert('Erro ao ler a planilha Excel: ' + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  },
+
+  buscarLegislacaoPorCnae(cnaeCodigo) {
+    const digitos = onlyDigits(cnaeCodigo);
+    if (!digitos) return '[DADO NÃO INFORMADO]';
+    const regra = this.legislacao.find(r => onlyDigits(r['CNAE']) === digitos);
+    if (!regra) return '[DADO NÃO INFORMADO]';
+    return [
+      regra['Legislação específica principal'] || regra['Legislacao especifica principal'],
+      regra['Legislação transversal a considerar'] || regra['Legislacao transversal a considerar']
+    ].filter(Boolean).join('; ') || '[DADO NÃO INFORMADO]';
+  },
+
+  obterProximoNumeroLivre(anoAtual) {
+    const usados = new Set();
+    this.numeracao.forEach(r => {
+      const num = String(r['N°'] || r['Nº'] || '').trim().padStart(3, '0');
+      const ocupado = Boolean(r['Razão Social'] || r['Nome fantasia'] || r['CNPJ ou CPF']);
+      if (num && ocupado) usados.add(`${num}/${anoAtual}`);
+    });
+    this.historico.forEach(h => {
+      if (h.numero && h.ano) usados.add(`${String(h.numero).padStart(3, '0')}/${h.ano}`);
+    });
+    for (const r of this.numeracao) {
+      const num = String(r['N°'] || r['Nº'] || '').trim().padStart(3, '0');
+      if (num !== '000' && !usados.has(`${num}/${anoAtual}`)) return num;
+    }
+    const maior = this.historico.reduce((max, h) => Math.max(max, parseInt(h.numero, 10) || 0), 0);
+    return String(maior + 1).padStart(3, '0');
+  },
+
+  numeroEstaDuplicado(numero, ano, cnpjAtual) {
+    const numPad = String(numero || '').trim().padStart(3, '0');
+    if (!numPad || numPad === '000') return false;
+    const conflitoPlanilha = this.numeracao.find(r => {
+      const n = String(r['N°'] || r['Nº'] || '').trim().padStart(3, '0');
+      const doc = onlyDigits(r['CNPJ ou CPF']);
+      return n === numPad && doc && doc !== onlyDigits(cnpjAtual);
+    });
+    const conflitoHistorico = this.historico.find(h =>
+      String(h.numero).padStart(3, '0') === numPad &&
+      String(h.ano) === String(ano) &&
+      onlyDigits(h.cnpj) !== onlyDigits(cnpjAtual)
+    );
+    return Boolean(conflitoPlanilha || conflitoHistorico);
+  },
+
+  reservarNumeroDefinitivo(modelo) {
+    const numPad = String(modelo.numero || '').trim().padStart(3, '0');
+    const linha = this.numeracao.find(r => String(r['N°'] || r['Nº'] || '').trim().padStart(3, '0') === numPad);
+    if (linha) {
+      linha['Razão Social'] = modelo.razao;
+      linha['Nome fantasia'] = modelo.fantasia;
+      linha['CNPJ ou CPF'] = modelo.cnpj;
+    } else {
+      this.numeracao.push({ 'N°': numPad, 'Razão Social': modelo.razao, 'Nome fantasia': modelo.fantasia, 'CNPJ ou CPF': modelo.cnpj });
+    }
+    this.save('ri_db_numeracao', this.numeracao);
+  }
+};
+
+const InspectionModel = {
+  passoAtual: 1,
+  razao: '',
+  fantasia: '',
+  cnpj: '',
+  municipio: '',
+  endereco: '',
+  telefone: '',
+  email: '',
+  responsavel: '',
+  cpfResp: '',
+  coordenadas: '',
+  vencimento: '',
+  licenca: '',
+  situacaoAlvara: '',
+  numero: '',
+  ano: new Date().getFullYear(),
+  data: new Date().toISOString().slice(0, 10),
+  contatada: '',
+  equipeInspetora: 'Max Carvalho – ID 4469682',
+  objetivo: '',
+  atividadesDisponiveis: [],
+  semNC: false,
+  naoConformidades: [''],
+  fotos: [],
+  conclusao: '',
+  documentos: []
+};
+
+const ContractValidator = {
+  validarModelo(m) {
+    const pendencias = [];
+    if (!m.razao.trim()) pendencias.push('Razão Social');
+    if (!m.cnpj.trim()) pendencias.push('CNPJ/CPF');
+    if (!m.municipio.trim()) pendencias.push('Município');
+    if (!m.endereco.trim()) pendencias.push('Endereço');
+    if (!m.numero.trim()) pendencias.push('Número do RI');
+    if (!m.data.trim()) pendencias.push('Data da inspeção');
+    if (!m.atividadesDisponiveis.some(a => a.selecionado)) pendencias.push('Atividade Licenciada (CNAE)');
+    if (!m.contatada.trim()) pendencias.push('Pessoa contactada');
+    if (!m.objetivo.trim()) pendencias.push('Objetivo');
+    if (!m.semNC && !m.naoConformidades.some(nc => nc.trim() !== '')) pendencias.push('Não Conformidades');
+    if (!m.conclusao) pendencias.push('Conclusão (A ou B)');
+
+    const duplicado = DataRepository.numeroEstaDuplicado(m.numero, m.ano, m.cnpj);
+    if (duplicado) pendencias.push(`Conflito de numeração no RI ${m.numero}/${m.ano}`);
+
+    return { valido: pendencias.length === 0, pendencias, duplicado };
+  }
+};
+
+function renderizarDocumentoRI(m) {
+  const req = v => (v && String(v).trim() ? esc(String(v).trim()) : '[DADO NÃO INFORMADO]');
+  const numFmt = m.numero.trim() ? String(m.numero.trim()).padStart(3, '0') : '[NÚMERO A CONFIRMAR]';
+  const anoFmt = m.ano || new Date().getFullYear();
+
+  const objetivosHtml = ['Alvará Inicial', 'Renovação de Alvará', 'Rotina', 'Denúncia']
+    .map(v => `${v === m.objetivo ? '☒' : '☐'} ${v}`).join('&nbsp;&nbsp;');
+
+  const cnaesSelecionados = m.atividadesDisponiveis.filter(a => a.selecionado);
+  const atividadesHtml = cnaesSelecionados.length
+    ? '<br>' + cnaesSelecionados.map(a => `CNAE ${req(a.cnae)} – ${req(a.desc)}.`).join('<br>')
+    : '[DADO NÃO INFORMADO]';
+
+  const legislacaoHtml = cnaesSelecionados.length
+    ? '<ol>' + cnaesSelecionados.map(a => `<li><b>CNAE ${req(a.cnae)}:</b> ${esc(DataRepository.buscarLegislacaoPorCnae(a.cnae))}</li>`).join('') + '</ol>'
+    : '[DADO NÃO INFORMADO]';
+
+  const ncsValidas = m.naoConformidades.map(x => x.trim()).filter(Boolean);
+  const ncHtml = m.semNC
+    ? 'Não foram identificadas não conformidades durante a inspeção.'
+    : (ncsValidas.length ? '<ol>' + ncsValidas.map(v => `<li>${esc(v)}</li>`).join('') + '</ol>' : '[DADO NÃO INFORMADO]');
+
+  const docsSelecionados = METADADOS_RI.documentos.filter(d => m.documentos.includes(d.cod));
+  const docsHtml = docsSelecionados.length
+    ? `<p><b>Solicitamos o envio, por e-mail (${METADADOS_RI.emailRetorno}), dos seguintes documentos:</b></p><ul>` +
+      docsSelecionados.map(d => `<li><b>${d.cod}.</b> ${d.texto}</li>`).join('') + '</ul>'
+    : '';
+
+  const fotosHtml = m.fotos.length
+    ? `<div class="fotos-grid-doc">` +
+      m.fotos.map((f, idx) => `<div class="foto-item-doc"><img src="${f.dataUrl}" alt="Foto ${idx + 1}"><br><small><b>Foto ${idx + 1}:</b> ${esc(f.legenda || 'Registro da inspeção')}</small></div>`).join('') + `</div>`
+    : '';
+
+  const head = t => `<tr><th colspan="3">${t}</th></tr>`;
+  const row = cols => `<tr>${cols}</tr>`;
+  const cell = (t, span, cls = '') => `<td${span ? ` colspan="${span}"` : ''}${cls ? ` class="${cls}"` : ''}>${t}</td>`;
+
+  return `<div class="ri-doc">
+    <table class="ri-cabecalho-tabela">
+      <colgroup><col style="width:33.33%"><col style="width:33.33%"><col style="width:33.33%"></colgroup>
+      <tr><th>RELATÓRIO DE INSPEÇÃO</th><th>Nº ${esc(numFmt)}/${esc(anoFmt)}</th><th>Data da inspeção: ${fmtDate(m.data)}</th></tr>
+      <tr><td colspan="3">${esc(METADADOS_RI.orgaoCabecalho)}</td></tr>
+    </table>
+    <table class="ri-table">
+      <colgroup><col style="width:34%"><col style="width:33%"><col style="width:33%"></colgroup>
+      ${head('IDENTIFICAÇÃO DO ESTABELECIMENTO INSPECIONADO')}
+      ${row(cell('<b>1. Nome/Razão Social:</b> ' + req(m.razao), 3))}
+      ${row(cell('<b>2. Nome Fantasia:</b> ' + req(m.fantasia), 3))}
+      ${row(cell('<b>3. Endereço:</b> ' + req(m.endereco)) + cell('<b>4. CPF/CNPJ:</b> ' + req(m.cnpj), 2))}
+      ${row(cell('<b>5. Licença Sanitária nº:</b> ' + req(m.licenca)) + cell('<b>6. Município:</b> ' + req(m.municipio), 2))}
+      ${row(cell('<b>7. Telefone:</b> ' + req(m.telefone)) + cell('<b>8. AFE/AE:</b> NA', 2))}
+      ${row(cell('<b>9. Atividade(s) licenciada(s):</b>' + atividadesHtml, 3))}
+      ${row(cell('<b>10. E-mail:</b> ' + req(m.email), 3))}
+      ${row(cell('<b>11. Responsável Técnico:</b> NA') + cell('<b>12. CPF:</b> NA', 2))}
+      ${row(cell('<b>13. Conselho Profissional/UF:</b> NA', 3))}
+      ${row(cell('<b>14. Responsável Legal:</b> ' + req(m.responsavel)) + cell('<b>15. CPF:</b> ' + req(m.cpfResp), 2))}
+      ${row(cell('<b>16. Pessoas contatadas:</b> ' + req(m.contatada), 3))}
+      ${row(cell('<b>17. Outros:</b><br>Vencimento do alvará: ' + fmtDate(m.vencimento) + '<br>Coordenadas Geográficas: ' + req(m.coordenadas), 3))}
+      ${head('INFORMAÇÕES DA INSPEÇÃO')}
+      ${row(cell('<b>18. Objetivo da inspeção:</b> ' + objetivosHtml, 3))}
+      ${row(cell('<b>19. Legislação aplicável:</b>' + legislacaoHtml, 3))}
+      ${row(cell('<b>20. Constatações/Não conformidades encontradas:</b>' + ncHtml, 3))}
+      ${row(cell('<b>21. Conclusão:</b><p>' + (m.conclusao ? esc(METADADOS_RI.conclusoes[m.conclusao]) : '[DADO NÃO INFORMADO]') + '</p>' + docsHtml, 3))}
+      ${head('FOTOS')}
+      ${row(cell(fotosHtml, 3, 'fotos'))}
+      ${head('IDENTIFICAÇÃO DA EQUIPE INSPETORA')}
+      ${row(cell('<b>Nome e Identificação Funcional</b>', 2) + cell('<b>Assinatura</b>'))}
+      ${row(cell(req(m.equipeInspetora), 2) + cell(''))}
+      ${row(cell('<b>Relatório entregue à empresa em:</b>', 3))}
+    </table>
+  </div>`;
+}
+
+const UIController = {
+  init() {
+    DataRepository.init();
+    this.construirBarraWizard();
+    this.construirConclusoesEDocs();
+    this.atualizarInterfaceDaBase();
+
+    InspectionModel.numero = DataRepository.obterProximoNumeroLivre(InspectionModel.ano);
+    this.carregarRascunhoAutomatico();
+    this.sincronizarInputsComModelo();
+    this.registrarEventos();
+    this.irParaPasso(InspectionModel.passoAtual || 1);
+    this.atualizarPreviaEValidacao();
+    this.atualizarContadoresTopo();
+  },
+
+  atualizarInterfaceDaBase() {
+    const total = DataRepository.cadastro.length;
+    $('badgeTotalBase').textContent = `${total} cadastro(s)`;
+    if (total > 0) {
+      $('boxImportacaoInicial').classList.add('hidden');
+      $('statusBase').className = 'ok';
+      const infoSync = DataRepository.metaSincronizacao
+        ? ` (Última atualização: ${DataRepository.metaSincronizacao.dataHora} — ${DataRepository.metaSincronizacao.arquivo})`
+        : '';
+      $('statusBase').textContent = `Planilha ativa neste navegador: ${total} estabelecimentos carregados${infoSync}.`;
+    } else {
+      $('boxImportacaoInicial').classList.remove('hidden');
+      $('statusBase').className = 'aviso';
+      $('statusBase').textContent = 'Nenhuma planilha carregada neste navegador. Selecione o arquivo "Alvarás Alimentos 2ªCRS.xlsx" acima.';
+    }
+    this.popularDatalistEstabelecimentos();
+    this.popularSelectLegislacaoExtra();
+  },
+
+  construirBarraWizard() {
+    const nav = $('wizardNav');
+    nav.innerHTML = METADADOS_RI.passosWizard.map(p =>
+      `<button type="button" class="step-pill" data-goto="${p.num}">${p.titulo}</button>`
+    ).join('');
+    nav.querySelectorAll('.step-pill').forEach(btn => {
+      btn.addEventListener('click', () => this.irParaPasso(parseInt(btn.dataset.goto, 10)));
+    });
+  },
+
+  construirConclusoesEDocs() {
+    $('containerConclusao').innerHTML = Object.entries(METADADOS_RI.conclusoes).map(([k, texto]) =>
+      `<label><input type="radio" name="conclusaoRadio" value="${k}"> <span><b>${k}.</b> ${esc(texto)}</span></label>`
+    ).join('');
+
+    let htmlDocs = '';
+    const subDocs = METADADOS_RI.documentos.filter(d => d.sub);
+    METADADOS_RI.documentos.filter(d => !d.sub).forEach(d => {
+      htmlDocs += `<label><input type="checkbox" class="chk-doc" value="${d.cod}" id="chkDoc_${d.cod}"> <span><b>${d.cod}.</b> ${d.texto}</span></label>`;
+      if (d.cod === 'C') {
+        htmlDocs += `<div class="subdocs">` + subDocs.map(sd =>
+          `<label><input type="checkbox" class="chk-doc chk-subdoc-c" value="${sd.cod}"> <span><b>${sd.cod}.</b> ${sd.texto}</span></label>`
+        ).join('') + `</div>`;
+      }
+    });
+    $('containerDocs').innerHTML = htmlDocs;
+  },
+
+  popularDatalistEstabelecimentos() {
+    const dl = $('listaEstab');
+    dl.innerHTML = '';
+    DataRepository.cadastro.forEach((r, idx) => {
+      const raz = r['Razão Social'] || r['Razao Social'] || '';
+      const fan = r['Nome Fantasia'] || '';
+      const doc = r['CNPJ ou CPF'] || '';
+      if (raz || fan || doc) {
+        const opt = document.createElement('option');
+        opt.value = `${raz} | ${fan} | ${doc}`;
+        opt.dataset.idx = idx;
+        dl.appendChild(opt);
+      }
+    });
+  },
+
+  popularSelectLegislacaoExtra() {
+    const sel = $('selectCnaeExtra');
+    sel.innerHTML = '<option value="">Selecione um CNAE cadastrado na legislação...</option>' +
+      DataRepository.legislacao.map(r => {
+        const c = r['CNAE'] || '';
+        const a = r['Atividade'] || '';
+        return `<option value="${esc(c)}">${esc(c)} — ${esc(a)}</option>`;
+      }).join('');
+  },
+
+  selecionarEstabelecimentoDaBase(registro) {
+    const val = (...chaves) => chaves.map(k => registro[k]).find(v => v !== undefined && v !== null && v !== '') || '';
+    InspectionModel.razao = String(val('Razão Social', 'Razao Social'));
+    InspectionModel.fantasia = String(val('Nome Fantasia'));
+    InspectionModel.cnpj = String(val('CNPJ ou CPF'));
+    const mun = String(val('Município', 'Municipio'));
+    InspectionModel.municipio = mun === '#VALUE!' ? '' : mun;
+    InspectionModel.endereco = String(val('Endereço', 'Endereco'));
+    InspectionModel.telefone = String(val('Telefone'));
+    InspectionModel.email = String(val('E-mail', 'Email'));
+    InspectionModel.coordenadas = String(val('Coordenadas'));
+    const [respNome, respCpf] = extrairResponsavelECpf(val('Responsável Legal', 'Responsavel Legal'));
+    InspectionModel.responsavel = respNome;
+    InspectionModel.cpfResp = respCpf;
+    InspectionModel.contatada = respNome;
+    InspectionModel.vencimento = normalizarDataISO(val('Vencimento Alvará', 'Vencimento Alvara'));
+    InspectionModel.situacaoAlvara = String(val('Situação Alvará', 'STATUS') || 'Consultado');
+
+    const cnaeBruto = String(val('CNAE - Nº', 'CNAE - N°', 'CNAE'));
+    const descBruta = String(val('CNAE - Descrição', 'CNAE - Descricao'));
+    const codigosExtraidos = cnaeBruto.match(/\d{2}\.?\d{2}-\d(?:\/|-)\d{2}/g) || (cnaeBruto ? [cnaeBruto] : []);
+
+    InspectionModel.atividadesDisponiveis = codigosExtraidos.map(cod => {
+      const regraLeg = DataRepository.legislacao.find(l => onlyDigits(l['CNAE']) === onlyDigits(cod));
+      return {
+        cnae: cod.trim(),
+        desc: regraLeg ? regraLeg['Atividade'] : (descBruta || 'Atividade cadastrada'),
+        selecionado: true
+      };
+    });
+
+    this.sincronizarInputsComModelo();
+    this.atualizarPreviaEValidacao();
+  },
+
+  exibirResumoConfirmacaoEstabelecimento() {
+    if (!InspectionModel.razao && !InspectionModel.cnpj) {
+      $('painelConfirmacaoEstab').classList.add('hidden');
+      $('camposEstabDetalhe').classList.add('hidden');
+      return;
+    }
+    $('painelConfirmacaoEstab').classList.remove('hidden');
+    $('camposEstabDetalhe').classList.remove('hidden');
+    $('badgeSituacaoAlvara').textContent = `Situação: ${InspectionModel.situacaoAlvara || 'Preenchimento manual'}`;
+    $('resumoEstabDados').innerHTML = `
+      <div><b>Razão Social:</b> ${esc(InspectionModel.razao)}</div>
+      <div><b>Nome Fantasia:</b> ${esc(InspectionModel.fantasia || '—')}</div>
+      <div><b>CNPJ/CPF:</b> ${esc(InspectionModel.cnpj)}</div>
+      <div><b>Município:</b> ${esc(InspectionModel.municipio || '[Preencher]')}</div>
+      <div><b>Endereço:</b> ${esc(InspectionModel.endereco)}</div>
+      <div><b>Vencimento do Alvará:</b> ${fmtDate(InspectionModel.vencimento)}</div>
+    `;
+  },
+
+  renderizarCheckboxesCnae() {
+    const container = $('listaCheckboxesCnae');
+    if (!InspectionModel.atividadesDisponiveis.length) {
+      container.innerHTML = `<div class="aviso">Nenhum CNAE selecionado. Escolha um estabelecimento no Passo 1 ou inclua um CNAE abaixo.</div>`;
+      return;
+    }
+    container.innerHTML = InspectionModel.atividadesDisponiveis.map((ativ, idx) => {
+      const leg = DataRepository.buscarLegislacaoPorCnae(ativ.cnae);
+      return `<label style="border:1px solid #e4e7ec; padding:10px; border-radius:8px; margin-bottom:8px;">
+        <input type="checkbox" data-cnae-idx="${idx}" ${ativ.selecionado ? 'checked' : ''}>
+        <div>
+          <b>CNAE ${esc(ativ.cnae)}</b> — ${esc(ativ.desc)}
+          <div class="hint">Legislação: ${esc(leg)}</div>
+        </div>
+      </label>`;
+    }).join('');
+
+    container.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+      chk.addEventListener('change', e => {
+        const idx = parseInt(e.target.dataset.cnaeIdx, 10);
+        InspectionModel.atividadesDisponiveis[idx].selecionado = e.target.checked;
+        this.atualizarPreviaEValidacao();
+      });
+    });
+  },
+
+  renderizarNaoConformidades() {
+    const container = $('containerNCs');
+    if (InspectionModel.semNC) {
+      container.innerHTML = '';
+      $('btnAddNC').classList.add('hidden');
+      return;
+    }
+    $('btnAddNC').classList.remove('hidden');
+    container.innerHTML = InspectionModel.naoConformidades.map((texto, idx) => `
+      <div class="item-nc">
+        <div class="nc-num">${idx + 1}.</div>
+        <textarea data-nc-idx="${idx}" placeholder="Descreva a não conformidade nº ${idx + 1}...">${esc(texto)}</textarea>
+        <button class="btn perigo" type="button" data-rm-nc="${idx}">✕</button>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('textarea').forEach(ta => {
+      ta.addEventListener('input', e => {
+        InspectionModel.naoConformidades[parseInt(e.target.dataset.ncIdx, 10)] = e.target.value;
+        this.atualizarPreviaEValidacao();
+      });
+    });
+    container.querySelectorAll('button[data-rm-nc]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        InspectionModel.naoConformidades.splice(parseInt(btn.dataset.rmNc, 10), 1);
+        if (!InspectionModel.naoConformidades.length) InspectionModel.naoConformidades.push('');
+        this.renderizarNaoConformidades();
+        this.atualizarPreviaEValidacao();
+      });
+    });
+  },
+
+  renderizarGaleriaFotos() {
+    const gal = $('galeriaFotos');
+    gal.innerHTML = InspectionModel.fotos.map((f, idx) => `
+      <div class="foto-card">
+        <img src="${f.dataUrl}" alt="Foto ${idx + 1}">
+        <input type="text" data-foto-leg="${idx}" placeholder="Legenda da foto ${idx + 1}" value="${esc(f.legenda || '')}">
+        <button type="button" class="btn perigo" data-rm-foto="${idx}" style="margin-top:4px; padding:4px 8px; font-size:11px; width:100%; justify-content:center;">Remover</button>
+      </div>
+    `).join('');
+
+    gal.querySelectorAll('input[data-foto-leg]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        InspectionModel.fotos[parseInt(e.target.dataset.fotoLeg, 10)].legenda = e.target.value;
+        this.atualizarPreviaEValidacao();
+      });
+    });
+    gal.querySelectorAll('button[data-rm-foto]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        InspectionModel.fotos.splice(parseInt(btn.dataset.rmFoto, 10), 1);
+        this.renderizarGaleriaFotos();
+        this.atualizarPreviaEValidacao();
+      });
+    });
+  },
+
+  sincronizarInputsComModelo() {
+    ['razao', 'fantasia', 'cnpj', 'municipio', 'endereco', 'telefone', 'email', 'responsavel', 'cpfResp', 'coordenadas', 'vencimento', 'licenca', 'numero', 'ano', 'data', 'contatada', 'equipeInspetora'].forEach(id => {
+      if ($(id)) $(id).value = InspectionModel[id] ?? '';
+    });
+    $('semNC').checked = Boolean(InspectionModel.semNC);
+    document.querySelectorAll('input[name="objetivoRadio"]').forEach(r => { r.checked = (r.value === InspectionModel.objetivo); });
+    document.querySelectorAll('input[name="conclusaoRadio"]').forEach(r => { r.checked = (r.value === InspectionModel.conclusao); });
+    document.querySelectorAll('.chk-doc').forEach(chk => { chk.checked = InspectionModel.documentos.includes(chk.value); });
+
+    this.exibirResumoConfirmacaoEstabelecimento();
+    this.renderizarCheckboxesCnae();
+    this.renderizarNaoConformidades();
+    this.renderizarGaleriaFotos();
+  },
+
+  irParaPasso(numPasso) {
+    InspectionModel.passoAtual = numPasso;
+    document.querySelectorAll('.step-panel').forEach(p => {
+      p.classList.toggle('hidden', parseInt(p.dataset.step, 10) !== numPasso);
+    });
+    document.querySelectorAll('.step-pill').forEach(pill => {
+      const n = parseInt(pill.dataset.goto, 10);
+      pill.classList.toggle('ativo', n === numPasso);
+      pill.classList.toggle('concluido', n < numPasso);
+    });
+    this.atualizarPreviaEValidacao();
+  },
+
+  atualizarPreviaEValidacao() {
+    $('preview').innerHTML = renderizarDocumentoRI(InspectionModel);
+    const v = ContractValidator.validarModelo(InspectionModel);
+
+    if (v.duplicado) {
+      $('statusNumeracao').className = 'aviso';
+      $('statusNumeracao').textContent = `Atenção: O número ${InspectionModel.numero}/${InspectionModel.ano} já consta utilizado para outro estabelecimento.`;
+    } else {
+      $('statusNumeracao').className = 'ok';
+      $('statusNumeracao').textContent = `Número ${String(InspectionModel.numero || '').padStart(3, '0')}/${InspectionModel.ano} disponível.`;
+    }
+
+    $('boxValidacaoContrato').className = v.valido ? 'ok' : 'aviso';
+    $('boxValidacaoContrato').textContent = v.valido
+      ? '✅ Todos os campos obrigatórios foram preenchidos.'
+      : '⚠️ Campos pendentes: ' + v.pendencias.join(', ') + '.';
+
+    $('resumoRevisaoFinal').innerHTML = `
+      <h3>Resumo — RI Nº ${esc(String(InspectionModel.numero).padStart(3, '0'))}/${esc(InspectionModel.ano)}</h3>
+      <div class="grid-resumo">
+        <div><b>Estabelecimento:</b> ${esc(InspectionModel.razao || '[Pendente]')}</div>
+        <div><b>CNPJ/CPF:</b> ${esc(InspectionModel.cnpj || '[Pendente]')}</div>
+        <div><b>Data:</b> ${fmtDate(InspectionModel.data)}</div>
+        <div><b>Objetivo:</b> ${esc(InspectionModel.objetivo || '[Pendente]')}</div>
+        <div><b>Não Conformidades:</b> ${InspectionModel.semNC ? 'Nenhuma' : InspectionModel.naoConformidades.filter(Boolean).length + ' item(ns)'}</div>
+        <div><b>Fotos:</b> ${InspectionModel.fotos.length} foto(s)</div>
+      </div>
+    `;
+    DataRepository.save('ri_rascunho_ativo', InspectionModel);
+  },
+
+  carregarRascunhoAutomatico() {
+    const salvo = DataRepository.load('ri_rascunho_ativo', null);
+    if (salvo && typeof salvo === 'object') Object.assign(InspectionModel, salvo);
+  },
+
+  atualizarContadoresTopo() {
+    $('contRascunhos').textContent = DataRepository.rascunhos.length;
+    $('contHistorico').textContent = DataRepository.historico.length;
+  },
+
+  comprimirImagem(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxW = 720;
+          const scale = img.width > maxW ? maxW / img.width : 1;
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.78));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  },
+
+  /* Word removido: a emissão desta versão é feita somente por PDF/impressão. */
+  exportarWordModeloNovo() {
+    return;
+    /*
+    const validacao = ContractValidator.validarModelo(InspectionModel);
+    if (!validacao.valido && !confirm('Campos pendentes: ' + validacao.pendencias.join(', ') + '. Deseja gerar mesmo assim?')) return;
+
+    DataRepository.reservarNumeroDefinitivo(InspectionModel);
+    this.registrarNoHistorico();
+
+    const htmlGerado = renderizarDocumentoRI(InspectionModel);
+    // O cabeçalho permanece dentro da tabela, como no modelo Word.
+    const corpoHtml = htmlGerado;
+
+    const cssWord = `
+      @page Section1 { size:21cm 29.7cm; margin:3.2cm 2cm 2cm 2cm; mso-header-margin:1cm; mso-footer-margin:1cm; mso-header:h1; mso-footer:f1; }
+      div.Section1 { page:Section1; }
+      div#h1 { mso-element:header; }
+      div#f1 { mso-element:footer; }
+      #f1 .rodape { text-align:right; font-family:Arial; font-size:9pt; margin:0; }
+      body { font-family:Arial, sans-serif; font-size:10pt; }
+      .ri-cabecalho-tabela { border-collapse:collapse; width:100%; margin:0 0 8px; }
+      .ri-cabecalho-tabela th { font-size:12pt; text-align:center; font-weight:bold; }
+      .ri-cabecalho-tabela td { text-align:center; font-size:9pt; }
+      .ri-doc h1 { text-align:center; font-size:12pt; line-height:1.1; margin:0; font-weight:bold; }
+      .ri-doc h2 { text-align:center; font-size:11pt; line-height:1.1; margin:2px 0 7px; font-weight:bold; }
+      .ri-doc .cab { text-align:center; font-size:9pt; line-height:1.15; margin:0 auto 8px; max-width:165mm; }
+      .ri-doc .data-inspecao { text-align:left; margin:0; font-size:10pt; }
+      table { border-collapse:collapse; width:100%; }
+      td, th { border:1px solid #000; padding:5px; vertical-align:top; }
+      th { font-weight:bold; text-align:center; background:#f2f2f2; }
+      li { margin-bottom:3px; }
+    `;
+
+    const docCompleto = `<!doctype html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>${cssWord}</style>  <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.8/pizzip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.67.0/docxtemplater.js"></script>
+</head><body><div id="f1"><p class="rodape">pág. <span style="mso-field-code:PAGE"></span> de <span style="mso-field-code:NUMPAGES"></span></p></div><div class="Section1">${corpoHtml}</div></body></html>`;
+
+    let objectUrl = null;
+    try {
+      const blob = new Blob(['\ufeff', docCompleto], { type: 'application/msword' });
+      objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const nomeEstab = (InspectionModel.fantasia || InspectionModel.razao || 'ESTABELECIMENTO').replace(/[^a-z0-9]+/gi, '_');
+      link.href = objectUrl;
+      link.download = `RI_${String(InspectionModel.numero || '000').padStart(3, '0')}_${InspectionModel.ano}_${nomeEstab}.doc`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } finally {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    }
+    */
+  },
+
+  registrarNoHistorico() {
+    const copia = JSON.parse(JSON.stringify(InspectionModel));
+    copia.emitidoEm = new Date().toISOString();
+    const idx = DataRepository.historico.findIndex(h =>
+      String(h.numero).padStart(3, '0') === String(copia.numero).padStart(3, '0') && String(h.ano) === String(copia.ano)
+    );
+    if (idx >= 0) DataRepository.historico[idx] = copia;
+    else DataRepository.historico.unshift(copia);
+    DataRepository.save('ri_db_historico', DataRepository.historico);
+    this.atualizarContadoresTopo();
+  },
+
+  habilitarCamposManuais() {
+    $('camposEstabDetalhe').classList.remove('hidden');
+    ['razao', 'fantasia', 'cnpj', 'municipio', 'endereco', 'telefone', 'email', 'responsavel', 'cpfResp', 'coordenadas', 'vencimento'].forEach(id => {
+      $(id).removeAttribute('readonly');
+    });
+  },
+
+  registrarEventos() {
+    document.querySelectorAll('[data-next]').forEach(btn => {
+      btn.addEventListener('click', () => this.irParaPasso(parseInt(btn.dataset.next, 10)));
+    });
+    document.querySelectorAll('[data-prev]').forEach(btn => {
+      btn.addEventListener('click', () => this.irParaPasso(parseInt(btn.dataset.prev, 10)));
+    });
+
+    // Importação rápida direto no Passo 1
+    $('inputExcelRapido').addEventListener('change', e => {
+      DataRepository.importarArquivoExcel(e.target.files[0], () => {
+        this.atualizarInterfaceDaBase();
+        InspectionModel.numero = DataRepository.obterProximoNumeroLivre(InspectionModel.ano);
+        $('numero').value = InspectionModel.numero;
+        this.atualizarPreviaEValidacao();
+      });
+    });
+
+    $('busca').addEventListener('input', e => {
+      const q = norm(e.target.value);
+      if (!q) return;
+      const idx = DataRepository.cadastro.findIndex(r => {
+        const textoOpcao = norm(`${r['Razão Social'] || ''} | ${r['Nome Fantasia'] || ''} | ${r['CNPJ ou CPF'] || ''}`);
+        return textoOpcao === q || [r['Razão Social'], r['Nome Fantasia'], r['CNPJ ou CPF']].some(v => norm(v) && q.includes(norm(v)));
+      });
+      if (idx >= 0) this.selecionarEstabelecimentoDaBase(DataRepository.cadastro[idx]);
+    });
+
+    $('btnHabilitarEdicaoManual').addEventListener('click', () => this.habilitarCamposManuais());
+    $('btnPreencherSemPlanilha').addEventListener('click', () => this.habilitarCamposManuais());
+
+    ['razao', 'fantasia', 'cnpj', 'municipio', 'endereco', 'telefone', 'email', 'responsavel', 'cpfResp', 'coordenadas', 'vencimento', 'numero', 'ano', 'data', 'contatada', 'equipeInspetora'].forEach(id => {
+      $(id).addEventListener('input', e => {
+        InspectionModel[id] = e.target.value;
+        this.atualizarPreviaEValidacao();
+      });
+    });
+
+    $('btnReservarNumero').addEventListener('click', () => {
+      InspectionModel.numero = DataRepository.obterProximoNumeroLivre(InspectionModel.ano);
+      $('numero').value = InspectionModel.numero;
+      this.atualizarPreviaEValidacao();
+    });
+
+    $('btnAddCnaeExtra').addEventListener('click', () => {
+      const cnaeSel = $('selectCnaeExtra').value;
+      if (!cnaeSel) return;
+      const regra = DataRepository.legislacao.find(r => r['CNAE'] === cnaeSel);
+      if (!InspectionModel.atividadesDisponiveis.some(a => onlyDigits(a.cnae) === onlyDigits(cnaeSel))) {
+        InspectionModel.atividadesDisponiveis.push({ cnae: cnaeSel, desc: regra ? regra['Atividade'] : '', selecionado: true });
+      }
+      this.renderizarCheckboxesCnae();
+      this.atualizarPreviaEValidacao();
+    });
+
+    document.querySelectorAll('input[name="objetivoRadio"]').forEach(r => {
+      r.addEventListener('change', e => {
+        if (e.target.checked) { InspectionModel.objetivo = e.target.value; this.atualizarPreviaEValidacao(); }
+      });
+    });
+
+    $('semNC').addEventListener('change', e => {
+      InspectionModel.semNC = e.target.checked;
+      this.renderizarNaoConformidades();
+      this.atualizarPreviaEValidacao();
+    });
+
+    $('btnAddNC').addEventListener('click', () => {
+      InspectionModel.naoConformidades.push('');
+      this.renderizarNaoConformidades();
+      this.atualizarPreviaEValidacao();
+    });
+
+    $('inputFotos').addEventListener('change', async e => {
+      const files = Array.from(e.target.files || []);
+      for (const file of files) {
+        const dataUrl = await this.comprimirImagem(file);
+        InspectionModel.fotos.push({ dataUrl, legenda: file.name.replace(/\.[^.]+$/, '') });
+      }
+      e.target.value = '';
+      this.renderizarGaleriaFotos();
+      this.atualizarPreviaEValidacao();
+    });
+
+    document.querySelectorAll('input[name="conclusaoRadio"]').forEach(r => {
+      r.addEventListener('change', e => {
+        if (e.target.checked) { InspectionModel.conclusao = e.target.value; this.atualizarPreviaEValidacao(); }
+      });
+    });
+
+    $('chkDoc_C').addEventListener('change', e => {
+      document.querySelectorAll('.chk-subdoc-c').forEach(sub => { sub.checked = e.target.checked; });
+      InspectionModel.documentos = Array.from(document.querySelectorAll('.chk-doc:checked')).map(x => x.value);
+      this.atualizarPreviaEValidacao();
+    });
+
+    document.querySelectorAll('.chk-doc').forEach(chk => {
+      chk.addEventListener('change', () => {
+        InspectionModel.documentos = Array.from(document.querySelectorAll('.chk-doc:checked')).map(x => x.value);
+        this.atualizarPreviaEValidacao();
+      });
+    });
+
+    $('btnSalvarRascunhoNomeado').addEventListener('click', () => {
+      const copia = JSON.parse(JSON.stringify(InspectionModel));
+      copia.salvoEm = new Date().toISOString();
+      DataRepository.rascunhos.unshift(copia);
+      DataRepository.save('ri_db_rascunhos', DataRepository.rascunhos);
+      this.atualizarContadoresTopo();
+      alert('Rascunho salvo com sucesso neste navegador!');
+    });
+
+    const valorOuPadrao = valor => String(valor ?? '').trim() || '[DADO NÃO INFORMADO]';
+    const dataDocx = valor => valor ? fmtDate(valor) : '[DADO NÃO INFORMADO]';
+    const baixarBlob = (blob, nome) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = nome; document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+    const gerarDocxNoNavegador = async () => {
+      const validacao = ContractValidator.validarModelo(InspectionModel);
+      if (!validacao.valido && !confirm('Campos pendentes: ' + validacao.pendencias.join(', ') + '. Deseja gerar mesmo assim?')) return;
+      const btn = $('btnBaixarDocx'); const original = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Gerando DOCX...';
+      try {
+        if (!window.PizZip || !window.docxtemplater) throw new Error('As bibliotecas de geração não foram carregadas. Verifique a conexão com a internet.');
+        const resposta = await fetch('./modelo-ri-template.docx', { cache: 'no-store' });
+        if (!resposta.ok) throw new Error('O arquivo modelo-ri-template.docx não foi encontrado no repositório.');
+        const conteudo = await resposta.arrayBuffer();
+        const atividadesMarcadas = InspectionModel.atividadesDisponiveis.filter(a => a.selecionado);
+        const atividades = atividadesMarcadas.map(a => `CNAE ${valorOuPadrao(a.cnae)} - ${valorOuPadrao(a.desc)}.`).join('\n');
+        const legislacao = atividadesMarcadas.map(a => `CNAE ${valorOuPadrao(a.cnae)}: ${valorOuPadrao(DataRepository.buscarLegislacaoPorCnae(a.cnae))}`).join('\n');
+        const ncs = InspectionModel.semNC ? 'Não foram identificadas não conformidades durante a inspeção.' :
+          InspectionModel.naoConformidades.filter(x => String(x).trim()).map((x,i) => `${i+1}. ${x}`).join('\n');
+        const conclusoes = {
+          A: 'A empresa encontra-se em condições de funcionamento para o ramo de atividade solicitado segundo a legislação vigente.',
+          B: 'A empresa não se encontra em condições de funcionamento para o ramo de atividade solicitado segundo a legislação vigente. A empresa apresenta não conformidades que colocam em risco a qualidade dos produtos e a saúde dos consumidores.'
+        };
+        const documentos = METADADOS_RI.documentos.filter(d => InspectionModel.documentos.includes(d.cod))
+          .map((d,i) => `${i+1}. ${d.cod}. ${d.texto.replace(/<[^>]+>/g, '')}`);
+        const conclusao_documentos = [conclusoes[InspectionModel.conclusao] || '[DADO NÃO INFORMADO]',
+          ...(documentos.length ? ['Solicitamos o envio, por e-mail (visa-19crs@saude.rs.gov.br), dos seguintes documentos:', ...documentos] : [])].join('\n');
+        const objetivos = ['Alvará Inicial','Renovação de Alvará','Rotina','Denúncia'];
+        const dados = {
+          numero_ri: String(InspectionModel.numero || '').padStart(3,'0'), ano: valorOuPadrao(InspectionModel.ano),
+          data_inspecao: dataDocx(InspectionModel.data), razao: valorOuPadrao(InspectionModel.razao),
+          fantasia: valorOuPadrao(InspectionModel.fantasia), endereco: valorOuPadrao(InspectionModel.endereco),
+          cnpj: valorOuPadrao(InspectionModel.cnpj), licenca: valorOuPadrao(InspectionModel.licenca),
+          municipio: valorOuPadrao(InspectionModel.municipio), telefone: valorOuPadrao(InspectionModel.telefone),
+          email: valorOuPadrao(InspectionModel.email), responsavel: valorOuPadrao(InspectionModel.responsavel),
+          cpf_resp: valorOuPadrao(InspectionModel.cpfResp), contatada: valorOuPadrao(InspectionModel.contatada),
+          vencimento: dataDocx(InspectionModel.vencimento), coordenadas: valorOuPadrao(InspectionModel.coordenadas),
+          objetivo_opcoes: objetivos.map(x => `${x===InspectionModel.objetivo?'[X]':'[ ]'} ${x}`).join('   '),
+          atividades: atividades || '[DADO NÃO INFORMADO]', legislacao: legislacao || valorOuPadrao(InspectionModel.legislacaoTexto),
+          nao_conformidades: ncs || '[DADO NÃO INFORMADO]', conclusao_documentos,
+          equipe_inspetora: valorOuPadrao(InspectionModel.equipeInspetora)
+        };
+        const doc = new window.docxtemplater(new window.PizZip(conteudo), { paragraphLoop: true, linebreaks: true, nullGetter: () => '' });
+        doc.render(dados);
+        const blob = doc.getZip().generate({ type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const nomeEstabelecimento = (InspectionModel.fantasia || InspectionModel.razao || 'ESTABELECIMENTO').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/gi,'_').replace(/^_+|_+$/g,'').slice(0,60);
+        baixarBlob(blob, `RI_${dados.numero_ri}_${dados.ano}_${nomeEstabelecimento}.docx`);
+        DataRepository.reservarNumeroDefinitivo(InspectionModel); this.registrarNoHistorico(); this.atualizarPreviaEValidacao();
+      } catch (erro) { console.error(erro); alert('Erro ao gerar o DOCX: ' + erro.message); }
+      finally { btn.disabled = false; btn.textContent = original; }
+    };
+    $('btnBaixarDocx').addEventListener('click', gerarDocxNoNavegador);
+    $('btnBaixarPdf').addEventListener('click', () => {
+      DataRepository.reservarNumeroDefinitivo(InspectionModel); this.registrarNoHistorico(); this.atualizarPreviaEValidacao(); window.print();
+    });
+    $('btnLimparNovo').addEventListener('click', () => {
+      if (confirm('Limpar o preenchimento atual e iniciar um novo Relatório de Inspeção? (A planilha importada será mantida)')) {
+        const s = DataRepository.storage();
+        if (s) s.removeItem('ri_rascunho_ativo');
+        location.reload();
+      }
+    });
+
+    $('btnFecharModal').addEventListener('click', () => $('modalSistema').classList.add('hidden'));
+    $('btnAbrirRascunhos').addEventListener('click', () => this.abrirModalRascunhos());
+    $('btnAbrirHistorico').addEventListener('click', () => this.abrirModalHistorico());
+    $('btnAbrirBase').addEventListener('click', () => this.abrirModalBase());
+  },
+
+  abrirModalRascunhos() {
+    $('modalTitulo').textContent = '💾 Rascunhos Salvos';
+    if (!DataRepository.rascunhos.length) {
+      $('modalConteudo').innerHTML = '<div class="aviso">Nenhum rascunho salvo.</div>';
+    } else {
+      $('modalConteudo').innerHTML = `<table class="tabela-sistema">
+        <thead><tr><th>Data/Hora</th><th>RI Nº</th><th>Estabelecimento</th><th>Ações</th></tr></thead>
+        <tbody>${DataRepository.rascunhos.map((r, i) => `
+          <tr>
+            <td>${new Date(r.salvoEm).toLocaleString('pt-BR')}</td>
+            <td>${esc(r.numero)}/${esc(r.ano)}</td>
+            <td>${esc(r.razao || r.fantasia || 'Sem nome')}</td>
+            <td>
+              <button class="btn primario" data-load-rasc="${i}" style="padding:5px 9px;font-size:11px;">Abrir</button>
+              <button class="btn perigo" data-del-rasc="${i}" style="padding:5px 9px;font-size:11px;">Excluir</button>
+            </td>
+          </tr>`).join('')}</tbody>
+      </table>`;
+      $('modalConteudo').querySelectorAll('[data-load-rasc]').forEach(b => {
+        b.addEventListener('click', () => {
+          Object.assign(InspectionModel, JSON.parse(JSON.stringify(DataRepository.rascunhos[parseInt(b.dataset.loadRasc, 10)])));
+          this.sincronizarInputsComModelo();
+          this.atualizarPreviaEValidacao();
+          $('modalSistema').classList.add('hidden');
+        });
+      });
+      $('modalConteudo').querySelectorAll('[data-del-rasc]').forEach(b => {
+        b.addEventListener('click', () => {
+          DataRepository.rascunhos.splice(parseInt(b.dataset.delRasc, 10), 1);
+          DataRepository.save('ri_db_rascunhos', DataRepository.rascunhos);
+          this.atualizarContadoresTopo();
+          this.abrirModalRascunhos();
+        });
+      });
+    }
+    $('modalSistema').classList.remove('hidden');
+  },
+
+  abrirModalHistorico() {
+    $('modalTitulo').textContent = '📜 Histórico de Relatórios Emitidos';
+    if (!DataRepository.historico.length) {
+      $('modalConteudo').innerHTML = '<div class="aviso">Nenhum RI emitido neste navegador ainda.</div>';
+    } else {
+      $('modalConteudo').innerHTML = `<table class="tabela-sistema">
+        <thead><tr><th>RI Nº</th><th>Data Inspeção</th><th>Estabelecimento</th><th>CNPJ/CPF</th><th>Conclusão</th><th>Ações</th></tr></thead>
+        <tbody>${DataRepository.historico.map((h, i) => `
+          <tr>
+            <td><b>${esc(String(h.numero).padStart(3, '0'))}/${esc(h.ano)}</b></td>
+            <td>${fmtDate(h.data)}</td>
+            <td>${esc(h.razao)}</td>
+            <td>${esc(h.cnpj)}</td>
+            <td>Opção ${esc(h.conclusao || '—')}</td>
+            <td><button class="btn secundario" data-reabrir-hist="${i}" style="padding:5px 9px;font-size:11px;">Reabrir</button></td>
+          </tr>`).join('')}</tbody>
+      </table>`;
+      $('modalConteudo').querySelectorAll('[data-reabrir-hist]').forEach(b => {
+        b.addEventListener('click', () => {
+          Object.assign(InspectionModel, JSON.parse(JSON.stringify(DataRepository.historico[parseInt(b.dataset.reabrirHist, 10)])));
+          this.sincronizarInputsComModelo();
+          this.atualizarPreviaEValidacao();
+          $('modalSistema').classList.add('hidden');
+        });
+      });
+    }
+    $('modalSistema').classList.remove('hidden');
+  },
+
+  abrirModalBase() {
+    $('modalTitulo').textContent = '📂 Atualizar Planilha Local (Alvarás Alimentos 2ªCRS.xlsx)';
+    const syncInfo = DataRepository.metaSincronizacao
+      ? `Última importação: <b>${esc(DataRepository.metaSincronizacao.dataHora)}</b> (${esc(DataRepository.metaSincronizacao.arquivo)})`
+      : 'Nenhuma planilha importada ainda neste aparelho.';
+    $('modalConteudo').innerHTML = `
+      <div class="${DataRepository.cadastro.length ? 'ok' : 'aviso'}">
+        <b>Resumo da Memória Local:</b> ${DataRepository.cadastro.length} estabelecimentos | ${DataRepository.legislacao.length} regras de legislação | ${DataRepository.numeracao.length} números de RI.<br>
+        <small>${syncInfo}</small>
+      </div>
+      <div class="campo">
+        <label>Selecionar Planilha Atualizada (.xlsx)</label>
+        <input type="file" id="inputExcelModal" accept=".xlsx,.xls">
+        <div class="hint">Sempre que a planilha <b>Alvarás Alimentos 2ªCRS.xlsx</b> for atualizada no SharePoint, basta selecioná-la aqui para renovar os dados neste aparelho.</div>
+      </div>
+      <div class="acoes" style="margin-top:14px; border-top:1px solid #eaecf0; padding-top:12px;">
+        <button class="btn perigo" id="btnApagarBaseLocal" type="button">🗑️ Remover Planilha da Memória deste Aparelho</button>
+      </div>
+    `;
+
+    $('inputExcelModal').addEventListener('change', e => {
+      DataRepository.importarArquivoExcel(e.target.files[0], () => {
+        this.atualizarInterfaceDaBase();
+        InspectionModel.numero = DataRepository.obterProximoNumeroLivre(InspectionModel.ano);
+        $('numero').value = InspectionModel.numero;
+        this.atualizarPreviaEValidacao();
+        this.abrirModalBase();
+        alert('Planilha atualizada com sucesso!');
+      });
+    });
+
+    $('btnApagarBaseLocal').addEventListener('click', () => {
+      if (confirm('Deseja remover os dados da planilha salvos neste navegador?')) {
+        DataRepository.cadastro = [];
+        DataRepository.numeracao = [];
+        DataRepository.metaSincronizacao = null;
+        DataRepository.save('ri_db_cadastro', []);
+        DataRepository.save('ri_db_numeracao', []);
+        DataRepository.save('ri_db_meta_sync', null);
+        this.atualizarInterfaceDaBase();
+        this.abrirModalBase();
+      }
+    });
+
+    $('modalSistema').classList.remove('hidden');
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => UIController.init());
+</script>
+</body>
+</html>
